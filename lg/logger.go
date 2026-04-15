@@ -126,26 +126,29 @@ WorkerLoop:
 		select {
 		case <-l.stop:
 			for msg := range l.queue.Chan() {
-				if msg.Text == "" {
-					continue
-				}
-				for _, p := range l.pipes {
-					p.Handle(msg)
-				}
+				l.handleMessages(msg)
 			}
 			break WorkerLoop
-
 		case msg := <-l.queue.Chan():
-			if msg.Text == "" {
-				continue
-			}
-			for _, p := range l.pipes {
-				p.Handle(msg)
-			}
+			l.handleMessages(msg)
 		}
 	}
 
 	l.wg.Done()
+}
+
+func (l *Logger) handleMessages(messages ...Message) {
+	for _, msg := range messages {
+		if msg.Text == "" {
+			continue
+		}
+		for _, p := range l.pipes {
+			p.Handle(msg)
+		}
+		if msg.done != nil {
+			close(msg.done)
+		}
+	}
 }
 
 func (l *Logger) watchSignals() {
@@ -157,10 +160,6 @@ func (l *Logger) watchSignals() {
 }
 
 func (l *Logger) Handle(args []any, level LogLevel) {
-	if l.closed.Load() {
-		return
-	}
-
 	if level.priority < l.level {
 		return
 	}
@@ -171,7 +170,13 @@ func (l *Logger) Handle(args []any, level LogLevel) {
 	}
 
 	msg := l.buildMessage(args, level, offset)
-	l.queue.Send(msg)
+	if msg.done != nil {
+		msg.done = make(chan struct{})
+		l.handleMessages(msg)
+		<-msg.done
+	} else {
+		l.queue.Send(msg)
+	}
 }
 
 func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message {
@@ -181,6 +186,17 @@ func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message
 		Caller: GetCallerInfo(3+callerOffset, l.splitFilePrefix),
 		Level:  level,
 		Time:   time.Now(),
+	}
+
+	args := make([]any, 0, len(m))
+	for _, item := range m {
+		if _, ok := item.(Sync); ok {
+			if msg.done == nil {
+				msg.done = make(chan struct{})
+			}
+		} else {
+			args = append(args, item)
+		}
 	}
 
 	if err := l.CheckArgs(m, &msg.Text, &msg.Context); err != nil {

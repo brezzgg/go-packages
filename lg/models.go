@@ -6,13 +6,18 @@ It is used to add context to logs in a convenient way.
 */
 type C map[string]any
 
+/*
+Sync is a context type used to synchronize log handling across goroutines.
+*/
+type Sync struct{}
+
 type TypeConverter interface {
 	ConvAndPushBody(item any, push BodyConverterFunc)
 	ConvAndPushContext(item any, push ContextConverterFunc)
 }
 
 type (
-	BodyConverterFunc func(string)
+	BodyConverterFunc    func(string)
 	ContextConverterFunc func(string, any)
 )
 

@@ -29,6 +29,8 @@ func (c defaultTypeConverter) ConvAndPushContext(item any, push ContextConverter
 		c.convAndPushContextC(value, push)
 	case error:
 		push("error", value.Error())
+	case Sync:
+		return
 	default:
 		push("arg", value)
 	}

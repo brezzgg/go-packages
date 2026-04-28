@@ -1,0 +1,45 @@
+debug: false
+
+server:
+  host: 0.0.0.0
+  port: 9090
+  read_timeout: 30
+  write_timeout: 30
+  admins:
+    - name: admin0
+      token: token0
+    - name: admin1
+      token: token1
+  tls:
+    cert_file: certs/server.crt
+    key_file: certs/server.key
+
+postgres:
+  user: admin
+  password: secret
+  tls:
+    cert_file: certs/postgres.crt
+    key_file: certs/postgres.key
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  pool:
+    max_open: 10
+    max_idle: 5
+    max_lifetime: 300
+
+kafka:
+  brokers:
+    - address: localhost:9092
+    - address: localhost:9093
+  topic: events
+  group_id: app-group
+  max_retries: 3
+
+log:
+  level: info
+  format: json
+  output: stdout

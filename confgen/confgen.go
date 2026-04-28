@@ -46,10 +46,9 @@ func mergeDefaults(dst, def reflect.Value) {
 			return
 		}
 		dst = dst.Elem()
-		def = def.Elem()
 	}
-	if dst.Kind() != reflect.Struct {
-		return
+	if def.Kind() == reflect.Ptr {
+		def = def.Elem()
 	}
 
 	for i := range dst.NumField() {
@@ -85,8 +84,8 @@ func validate(v reflect.Value) error {
 		field := t.Field(i)
 		value := v.Field(i)
 
-		tag := field.Tag.Get("confgen")
-		if strings.Contains(tag, "confgen_required") && value.IsZero() {
+		tag := field.Tag.Get("confgen_required")
+		if strings.Contains(tag, "true") && value.IsZero() {
 			return fmt.Errorf("field %q is required", field.Name)
 		}
 

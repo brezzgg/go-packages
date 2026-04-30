@@ -13,6 +13,9 @@ func Generate(s *schema.Schema, opts ...Option) (string, error) {
 	for _, fn := range opts {
 		fn(options)
 	}
+	if options.template == "" {
+		return "", fmt.Errorf("template not found")
+	}
 
 	if s.Output == nil || s.Output.Output == "" || s.Output.Package == "" || len(s.Output.Formats) == 0 {
 		return "", fmt.Errorf("output is required in hcl file. example:\n" +

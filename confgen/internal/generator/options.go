@@ -19,7 +19,7 @@ type (
 
 func NewOptions(schema *schema.Schema) *Options {
 	return &Options{
-		template: template.Default,
+		template: template.Templates[template.Default],
 		funcs:    functions.Default,
 		data:     structToMap(*schema),
 	}
@@ -48,6 +48,12 @@ func WithTemplateData(data map[string]any) Option {
 func WithCustomTemplate(tmpl string) Option {
 	return func(o *Options) {
 		o.template = tmpl
+	}
+}
+
+func WithTemplate(tmplName string) Option {
+	return func(o *Options) {
+		o.template = template.Templates[tmplName]
 	}
 }
 

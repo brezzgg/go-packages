@@ -5,13 +5,19 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/brezzgg/go-packages/confgen/internal/schema"
 	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
-func Parse(entries []string, recursive bool) (map[string]*schema.Schema, error) {
+func Parse(entries []string, recursive bool, pattern string) (map[string]*schema.Schema, error) {
 	result := make(map[string]*schema.Schema)
+
+	patternRe, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("bad pattern: %s", err)
+	}
 
 	for _, entry := range entries {
 		info, err := os.Stat(entry)
@@ -20,7 +26,7 @@ func Parse(entries []string, recursive bool) (map[string]*schema.Schema, error) 
 		}
 
 		if info.IsDir() {
-			r, err := processDirectory(entry, recursive)
+			r, err := processDirectory(entry, recursive, patternRe)
 			if err != nil {
 				return nil, fmt.Errorf("process directory: %s", err)
 			}
@@ -28,6 +34,9 @@ func Parse(entries []string, recursive bool) (map[string]*schema.Schema, error) 
 				result[k] = v
 			}
 		} else {
+			if !patternRe.MatchString(info.Name()) {
+				continue
+			}
 			s, err := processFile(entry)
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", entry, err)
@@ -39,7 +48,7 @@ func Parse(entries []string, recursive bool) (map[string]*schema.Schema, error) 
 	return result, nil
 }
 
-func processDirectory(entry string, recursive bool) (map[string]*schema.Schema, error) {
+func processDirectory(entry string, recursive bool, patternRe *regexp.Regexp) (map[string]*schema.Schema, error) {
 	result := make(map[string]*schema.Schema)
 
 	if recursive {
@@ -47,7 +56,7 @@ func processDirectory(entry string, recursive bool) (map[string]*schema.Schema, 
 			if err != nil {
 				return err
 			}
-			if d.IsDir() || filepath.Ext(path) != ".hcl" {
+			if d.IsDir() || !patternRe.MatchString(filepath.Base(path)) {
 				return nil
 			}
 

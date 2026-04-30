@@ -29,8 +29,8 @@ type Kafka struct {
 	Brokers []KafkaBroker `yaml:"brokers" json:"brokers"`
 	// Topic generated from hcl field "topic". Default value is "events". 
 	Topic string `yaml:"topic" json:"topic"`
-	// GroupId generated from hcl field "group_id". Default value is "app-group". 
-	GroupId string `yaml:"group_id" json:"group_id"`
+	// GroupIds generated from hcl field "group_ids". Default value is nil. 
+	GroupIds []string `yaml:"group_ids" json:"group_ids"`
 	// MaxRetries generated from hcl field "max_retries". Default value is 3. 
 	MaxRetries int `yaml:"max_retries" json:"max_retries"`
 }
@@ -131,6 +131,7 @@ type Tls struct {
 	KeyFile string `yaml:"key_file" json:"key_file" confgen_required:"true"`
 }
 
+
 // =============== Generate.Default ===============
 
 // DefaultApp returns instance of hcl generate App with default values.
@@ -146,6 +147,7 @@ func DefaultApp() App {
 	}
 }
 
+
 // =============== Objects.Default ===============
 
 // DefaultKafka returns instance of hcl object Kafka with default values.
@@ -153,7 +155,7 @@ func DefaultKafka() Kafka {
 	return Kafka{
 		Brokers: nil,
 		Topic: "events",
-		GroupId: "app-group",
+		GroupIds: nil,
 		MaxRetries: 3,
 	}
 }
@@ -235,12 +237,14 @@ func DefaultTls() Tls {
 	}
 }
 
+
 // =============== Generate.Default func ===============
 
 // Defaults returns result of DefaultApp.
 func (c App) Defaults() any {
 	return DefaultApp()
 }
+
 
 // =============== Objects.Default func ===============
 

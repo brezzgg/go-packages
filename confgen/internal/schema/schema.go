@@ -71,3 +71,11 @@ func Decode(body hcl.Body) (*Schema, error) {
 
 	return s, nil
 }
+
+func (f *Field) ParsedType() *FieldType {
+	if f.Type == nil {
+		return nil
+	}
+	t := ParseFieldType(*f.Type)
+	return &t
+}

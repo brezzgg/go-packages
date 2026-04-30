@@ -2,6 +2,7 @@ package functions
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/brezzgg/go-packages/confgen/internal/schema"
@@ -32,15 +33,31 @@ func toType(f schema.Field) string {
 		return "string"
 	}
 	t := strings.ToLower(*f.Type)
+
+	if base, ok := strings.CutPrefix(t, "list "); ok {
+		switch base {
+		case "object", "obj":
+			if f.Object != nil && *f.Object != "" {
+				return "[]" + toPascalCase(*f.Object)
+			}
+			return "[]any"
+		default:
+			if _, ok := primitiveDefaults[base]; ok {
+				return "[]" + base
+			}
+			return "[]string"
+		}
+	}
+
 	switch t {
 	case "list", "slice", "array":
 		if f.Object != nil && *f.Object != "" {
-			return "[]" + toCamelCase(*f.Object)
+			return "[]" + toPascalCase(*f.Object)
 		}
 		return "[]string"
 	case "object", "obj":
 		if f.Object != nil {
-			return toCamelCase(*f.Object)
+			return toPascalCase(*f.Object)
 		}
 		return "any"
 	default:
@@ -59,17 +76,22 @@ func toDefault(f schema.Field) string {
 		return `""`
 	}
 	t := strings.ToLower(*f.Type)
+
+	if _, ok := strings.CutPrefix(t, "list "); ok {
+		return "nil"
+	}
+
 	switch t {
 	case "list", "slice", "array":
 		return "nil"
 	case "object", "obj":
 		if f.Object != nil {
-			return "Default" + toCamelCase(*f.Object) + "()"
+			return "Default" + toPascalCase(*f.Object) + "()"
 		}
 		return "nil"
 	default:
 		if f.Default != nil && *f.Default != "" {
-			if t == "string" {
+			if t == "string" || t == "str" {
 				return fmt.Sprintf("%q", *f.Default)
 			}
 			return *f.Default
@@ -114,4 +136,12 @@ func toTag(name string, formats []string, required bool) string {
 		tags = append(tags, "confgen_required:\"true\"")
 	}
 	return "`" + strings.Join(tags, " ") + "`"
+}
+
+func deref(v any) any {
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() || rv.IsNil() {
+		return nil
+	}
+	return rv.Elem().Interface()
 }

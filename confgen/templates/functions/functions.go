@@ -8,4 +8,5 @@ var Default = map[string]any{
 	"ToSnake":   toSnakeCase,
 	"ToPascal":  toPascalCase,
 	"ToCamel":   toCamelCase,
+	"Deref":     deref,
 }

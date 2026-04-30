@@ -92,7 +92,7 @@ object "server" {
     desc    = "listen host"
   }
   field "admins" {
-    type = "list"
+    type = "list object"
     object = "server_admins"
   }
   field "port" {
@@ -134,16 +134,15 @@ object "server_admins" {
 
 object "kafka" {
   field "brokers" {
-    type   = "list"
+    type   = "list object"
     object = "kafka_broker"
   }
   field "topic" {
     type    = "string"
     default = "events"
   }
-  field "group_id" {
-    type    = "string"
-    default = "app-group"
+  field "group_ids" {
+    type    = "list string"
   }
   field "max_retries" {
     type    = "int"

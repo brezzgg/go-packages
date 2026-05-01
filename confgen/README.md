@@ -158,28 +158,75 @@ if err := confgen.Unmarshal(data, &cfg, yaml.Unmarshal); err != nil {
 
 ## CLI Reference
 
-```
-confgen [flags] <path> [path2 ...]
+```bash
+confgen [command]
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-r` | Recursively walk directories |
+#### `generate`
+
+Generate config form hcl schema
+
+```bash
+confgen generate <path> [path2 ...] [flags]
+```
 
 `path` can be either an `.hcl` file or a directory. When a directory is given, all `.hcl` files inside it are processed.
 
+| Flag                       | Description                                                 |
+| -------------------------- | ----------------------------------------------------------- |
+| `-p`, `--filename-pattern` | specify filenames regular expression (default "^.+\\.hcl$") |
+| `-r`, `--recursive`        | recursively walk directories                                |
+| `-d`, `--working-dir`      | specify working directory (default ".")                     |
+
+#### `validate`
+
+Validate hcl schema syntax
+
+```bash
+confgen validate <path> [path2 ...] [flags]
+```
+
+| Flag                       | Description                                                 |
+| -------------------------- | ----------------------------------------------------------- |
+| `-p`, `--filename-pattern` | specify filenames regular expression (default "^.+\\.hcl$") |
+| `-r`, `--recursive`        | recursively walk directories                                |
+| `-d`, `--working-dir`      | specify working directory (default ".")                     |
+
+#### `sample`
+
+Generate example config file based on hcl schema
+
+```bash
+confgen validate <schema.hcl> <json|yaml> [flags]
+```
+
+| Flag                  | Description                             |
+| --------------------- | --------------------------------------- |
+| `-d`, `--working-dir` | specify working directory (default ".") |
+
+### Usage samples
+
 ```bash
 # single file
-confgen schema.hcl
+confgen generate schemas/schema.hcl
 
 # multiple files
-confgen service.hcl database.hcl
+confgen generate schemas/service.hcl /schemas/v2/service.hcl
 
 # directory (non-recursive)
-confgen ./schemas/
+confgen generate schemas
 
 # directory (recursive)
-confgen -r ./schemas/
+confgen generate -r schemas
+
+# validate
+confgen validate schemas/v2/schema.hcl
+
+# sample in stdout
+confgen sample schemas/schema.hcl yaml
+
+# sample in file
+confgen sample schemas/schema.hcl yaml > sample.yaml
 ```
 
 ## Schema Reference
@@ -208,26 +255,26 @@ confgen -r ./schemas/
 
 ### Field Attributes
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `type` | string | Field type (see table below) |
-| `default` | string | Default value as a string literal |
-| `required` | bool | If `true`, returns an error when the field is missing from the config |
-| `desc` | string | Description, added as a comment in the generated code |
-| `object` | string | Name of the referenced `object` block (when `type = "object"` or `type = "list"`) |
+| Attribute  | Type   | Description                                                                       |
+| ---------- | ------ | --------------------------------------------------------------------------------- |
+| `type`     | string | Field type (see table below)                                                      |
+| `default`  | string | Default value as a string literal                                                 |
+| `required` | bool   | If `true`, returns an error when the field is missing from the config             |
+| `desc`     | string | Description, added as a comment in the generated code                             |
+| `object`   | string | Name of the referenced `object` block (when `type = "object"` or `type = "list"`) |
 
 ### Supported Types
 
-| HCL type | Go type | Zero value |
-|----------|---------|------------|
-| `string` / `str` | `string` | `""` |
-| `bool` / `boolean` | `bool` | `false` |
-| `int`, `int8` ... `int64` | corresponding int type | `0` |
-| `uint`, `uint8` ... `uint64` | corresponding uint type | `0` |
-| `float32`, `float64` | `float32` / `float64` | `0` |
-| `byte` | `byte` | `0` |
-| `object` / `obj` | nested struct | `Default<Name>()` |
-| `list` / `slice` / `array` | `[]string` or `[]<Object>` | `nil` |
+| HCL type                     | Go type                    | Zero value        |
+| ---------------------------- | -------------------------- | ----------------- |
+| `string` / `str`             | `string`                   | `""`              |
+| `bool` / `boolean`           | `bool`                     | `false`           |
+| `int`, `int8` ... `int64`    | corresponding int type     | `0`               |
+| `uint`, `uint8` ... `uint64` | corresponding uint type    | `0`               |
+| `float32`, `float64`         | `float32` / `float64`      | `0`               |
+| `byte`                       | `byte`                     | `0`               |
+| `object` / `obj`             | nested struct              | `Default<Name>()` |
+| `list [elements type]`       | `[]string` or `[]<Object>` | `nil`             |
 
 ### Blocks
 
@@ -273,7 +320,7 @@ object "replica" {
 
 generate "db_config" {
   field "replicas" {
-    type   = "list"
+    type   = "list object"
     object = "replica"
   }
 }
@@ -324,7 +371,7 @@ import (
     "github.com/brezzgg/go-packages/confgen/internal/parser"
 )
 
-schemas, _ := parser.Parse([]string{"schema.hcl"}, false)
+schemas, _ := parser.Parse([]string{"schema.hcl"}, false, ".+")
 for _, s := range schemas {
     code, err := generator.Generate(s,
         generator.WithCustomTemplate(myTemplate),
@@ -337,23 +384,25 @@ for _, s := range schemas {
 
 ### Generator Options
 
-| Option | Description |
-|--------|-------------|
-| `WithCustomTemplate(tmpl string)` | Replaces the built-in Go template |
+| Option                                        | Description                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------- |
+| `WithCustomTemplate(tmpl string)`             | Replaces the built-in template                                      |
+| `WithTemplate(tmplName string)`               | Pick built-in template                                              |
 | `WithTemplateFunctions(funcs map[string]any)` | Adds custom functions to the template (does not override built-ins) |
-| `WithTemplateData(data map[string]any)` | Adds custom data to the template context |
+| `WithTemplateData(data map[string]any)`       | Adds custom data to the template context                            |
 
 ### Built-in Template Functions
 
-| Function | Description |
-|----------|-------------|
-| `ToPascal` | `my_field` → `MyField` |
-| `ToCamel` | `my-field` → `MyField` |
-| `ToSnake` | `MyField` → `my_field` |
-| `ToType` | `schema.Field` → Go type string |
-| `ToDefault` | `schema.Field` → Go default expression |
-| `ToBool` | Converts `*bool`, `bool`, or `string` → `bool` |
-| `ToTag` | Generates struct tags from formats and the required flag |
+| Function    | Description                                              |
+| ----------- | -------------------------------------------------------- |
+| `ToPascal`  | `my_field` → `MyField`                                   |
+| `ToCamel`   | `my-field` → `MyField`                                   |
+| `ToSnake`   | `MyField` → `my_field`                                   |
+| `ToType`    | `schema.Field` → Go type string                          |
+| `ToDefault` | `schema.Field` → Go default expression                   |
+| `ToBool`    | Converts `*bool`, `bool`, or `string` → `bool`           |
+| `ToTag`     | Generates struct tags from formats and the required flag |
+| `Deref`     | Dereference a pointer                                    |
 
 ## Examples
 

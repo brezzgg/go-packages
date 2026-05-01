@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/brezzgg/go-packages/examples/lg_ex"
+	"github.com/brezzgg/go-packages/examples/lg/options"
 	"github.com/brezzgg/go-packages/lg"
 )
 
 func main() {
 	ExampleSetupLogger()
-	lg_ex.ExampleLevelOptions()
+	options.ExampleLevelOptions()
 	ExampleLogLevels()
 }
 

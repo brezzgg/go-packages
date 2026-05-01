@@ -1,4 +1,4 @@
-package lg_ex
+package options
 
 import "github.com/brezzgg/go-packages/lg"
 

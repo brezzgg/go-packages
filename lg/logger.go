@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -159,14 +160,29 @@ func (l *Logger) watchSignals() {
 	l.Close()
 }
 
+func (l *Logger) Handlef(f string, args []any, level LogLevel) {
+	count := l.countVerbs(f)
+
+	if count > len(args) {
+		count = len(args)
+	}
+
+	f = fmt.Sprintf(f, args[:count]...)
+	l.Handle(append([]any{f}, args[count:]...), level)
+}
+
 func (l *Logger) Handle(args []any, level LogLevel) {
 	if level.priority < l.level {
 		return
 	}
 
 	offset := 0
-	if isBadOffset(2) {
-		offset = 1
+	for {
+		if isBadOffset(offset + 2) {
+			offset++
+			continue
+		}
+		break
 	}
 
 	msg := l.buildMessage(args, level, offset)
@@ -199,7 +215,7 @@ func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message
 		}
 	}
 
-	if err := l.CheckArgs(m, &msg.Text, &msg.Context); err != nil {
+	if err := l.CheckArgs(args, &msg.Text, &msg.Context); err != nil {
 		msg = Message{
 			Caller:  msg.Caller,
 			Level:   logLevelLoggerError,
@@ -241,8 +257,30 @@ func (l *Logger) CheckArgs(args []any, msgBody *string, msgCtx *C) error {
 	if *msgCtx == nil {
 		*msgCtx = make(C)
 	}
-	for itemNum, item := range args {
-		if itemNum == 0 {
+	for i := 1; i < len(args); i++ {
+		item := args[i]
+		if key, ok := item.(string); ok {
+			if i+1 < len(args) {
+				switch args[i+1].(type) {
+				case C, Sync:
+					l.typeConv.ConvAndPushContext(item, func(k string, v any) {
+						(*msgCtx)[l.findKey(k, *msgCtx)] = v
+					})
+				default:
+					i++
+					val := args[i]
+					switch v := val.(type) {
+					case error:
+						(*msgCtx)[l.findKey(key, *msgCtx)] = v.Error()
+					default:
+						(*msgCtx)[l.findKey(key, *msgCtx)] = v
+					}
+				}
+				continue
+			}
+			l.typeConv.ConvAndPushContext(item, func(k string, v any) {
+				(*msgCtx)[l.findKey(k, *msgCtx)] = v
+			})
 			continue
 		}
 		l.typeConv.ConvAndPushContext(item, func(k string, v any) {
@@ -264,4 +302,19 @@ func (*Logger) findKey(k string, m C) string {
 		}
 	}
 	panic(fmt.Sprintf("too many duplicates of key '%s'", k))
+}
+
+var verbRe = regexp.MustCompile(`%(?:%|[-+ #0]*\d*(?:\.\d+)?[a-zA-Z])`)
+
+func (l *Logger) countVerbs(format string) int {
+	matches := verbRe.FindAllString(format, -1)
+
+	count := 0
+	for _, m := range matches {
+		if m != "%%" {
+			count++
+		}
+	}
+
+	return count
 }

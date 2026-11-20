@@ -1,6 +1,8 @@
 package lg
 
 import (
+	"strings"
+
 	"github.com/goccy/go-json"
 )
 
@@ -27,6 +29,7 @@ func WithIndent() JSONSerializerOption {
 }
 
 func (j *jsonSerializer) Serialize(m Message) string {
+	m.Level.Level = strings.ToLower(m.Level.Level)
 	var b []byte
 	if j.indent {
 		b, _ = json.MarshalIndent(m, "", "  ")

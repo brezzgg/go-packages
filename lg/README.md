@@ -98,24 +98,66 @@ logger := lg.NewLogger(
 
 ```go
 logger.Debug(args...)
+logger.Debugf(format, args...)
 logger.Info(args...)
+logger.Infof(format, args...)
 logger.Warn(args...)
+logger.Warnf(format, args...)
 logger.Error(args...)
-logger.Fatal(args...)   // runs EndTasks, closes logger, os.Exit(1)
-logger.Panic(args...)   // runs EndTasks, closes logger, prints stack, os.Exit(1)
+logger.Errorf(format, args...)
+logger.Fatal(args...)    // runs EndTasks, closes logger, os.Exit(1)
+logger.Fatalf(format, args...)
+logger.Panic(args...)    // runs EndTasks, closes logger, prints stack, os.Exit(1)
+logger.Panicf(format, args...)
 logger.Log(level, args...)
-logger.Exit(code)       // runs EndTasks, closes logger, os.Exit(code)
-logger.Invoked()        // logs "Invoked" at Debug level — useful for tracing
-logger.Close()          // flushes queue and closes all pipes (idempotent)
+logger.Logf(level, format, args...)
+logger.Exit(code)        // runs EndTasks, closes logger, os.Exit(code)
+logger.Invoked()         // logs "Invoked" at Debug level — useful for tracing
+logger.Close()           // flushes queue and closes all pipes (idempotent)
+```
+
+### Formatted Methods (`*f`)
+
+Formatted methods use `fmt.Sprintf`-compatible format strings:
+
+- The first argument is the format string.
+- Arguments required by format verbs are consumed from the remaining arguments in order.
+- Any arguments after the formatted values are treated as regular log arguments (for example, `lg.C{...}` for context or `lg.Sync{}`).
+
+```go
+logger.Infof("user %s logged in", userID, lg.C{"ip": ip})
+logger.Errorf("query failed: %v", err, lg.C{"query": q})
+logger.Logf(lg.LogLevelWarn, "retry %d/%d", attempt, maxAttempts)
 ```
 
 ### Global Logger
 
-`lg.GlobalLogger` is a package-level `*Logger` created with default settings. All methods are mirrored as package-level functions:
+`lg.GlobalLogger` is a package-level `*Logger` created with default settings. Logger methods are mirrored as package-level functions, including formatted variants:
 
 ```go
-lg.Info("app started")
-lg.Error("something failed", lg.C{"err": err})
+lg.Debug(args...)
+lg.Debugf(format, args...)
+lg.Info(args...)
+lg.Infof(format, args...)
+lg.Warn(args...)
+lg.Warnf(format, args...)
+lg.Error(args...)
+lg.Errorf(format, args...)
+lg.Fatal(args...)
+lg.Fatalf(format, args...)
+lg.Panic(args...)
+lg.Panicf(format, args...)
+lg.Log(level, args...)
+lg.Logf(level, format, args...)
+lg.Close()
+lg.Invoked()
+lg.Exit(code)
+```
+
+```go
+lg.Infof("server started on port %d", 8080, lg.C{"env": "prod"})
+lg.Errorf("db query failed: %v", err, lg.C{"query": q})
+lg.Logf(lg.LogLevelWarn, "cache miss for key %s", key)
 lg.Close()
 ```
 
@@ -131,6 +173,8 @@ lg.Ef("wrap: %w", err)        // alias for fmt.Errorf
 
 The first argument to any log call becomes the **message body**. Additional arguments are treated as **context**.
 
+### Context map (`lg.C`)
+
 ```go
 lg.Info("user logged in", lg.C{"user_id": 42, "ip": "127.0.0.1"})
 ```
@@ -139,6 +183,22 @@ lg.Info("user logged in", lg.C{"user_id": 42, "ip": "127.0.0.1"})
 
 ```go
 type C map[string]any
+```
+
+### Direct key-value context
+
+You can pass context as alternating key-value pairs directly in log arguments (without wrapping them in `lg.C`). String keys are paired with the following value and merged into the final context. This can be combined with `lg.C` maps.
+
+```go
+lg.Info("request handled", "request_id", "id8235", lg.C{"database": "postgres"})
+// context: {"request_id": "id8235", "database": "postgres"}
+
+lg.Error("query failed", "query", q, "duration_ms", 42, err)
+// context: {"query": q, "duration_ms": 42, "error": "..."}
+
+lg.Infof("user %s logged in", userID, "ip", ip, lg.C{"role": "admin"})
+// message: "user <userID> logged in"
+// context: {"ip": ip, "role": "admin"}
 ```
 
 Passing an `error` directly as a context argument is supported:

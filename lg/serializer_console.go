@@ -62,7 +62,7 @@ func (c *consoleSerializer) Serialize(m Message) string {
 }
 
 func (c *consoleSerializer) getTime(m Message) string {
-	const layout = "2006/01/02 15:04:05"
+	const layout = time.RFC3339
 
 	res, ok := m.Level.HandleOptions(func(opt LogLevelOption) (string, bool) {
 		switch opt {
@@ -83,7 +83,7 @@ func (c *consoleSerializer) getTime(m Message) string {
 	if !strings.HasPrefix(offsetStr, "-") {
 		offsetStr = "+" + offsetStr
 	}
-	return m.Time.UTC().Format("2006/01/02 15:04:05") + offsetStr + "  "
+	return m.Time.UTC().Format(layout) + offsetStr + "  "
 }
 
 func (c *consoleSerializer) getCaller(m Message) string {

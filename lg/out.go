@@ -30,6 +30,15 @@ func (l LogLevel) MarshalJSON() ([]byte, error) {
 	return json.Marshal(l.Level)
 }
 
+func (l *LogLevel) UnmarshalJSON(b []byte) error {
+	var levelStr string
+	if err := json.Unmarshal(b, &levelStr); err != nil {
+		return err
+	}
+	l.Level = levelStr
+	return nil
+}
+
 func (l LogLevel) WithOptions(opts ...LogLevelOption) LogLevel {
 	l.opts = append(l.opts, opts...)
 	return l

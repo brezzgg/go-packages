@@ -11,6 +11,7 @@ import (
 type (
 	consoleSerializer struct {
 		disableColors bool
+		indentContext bool
 		cachedOffset  int
 		cachedTime    time.Time
 	}
@@ -32,10 +33,24 @@ func WithDisabledColors() ConsoleSerializerOption {
 	}
 }
 
+func WithIndentContext() ConsoleSerializerOption {
+	return func(s *consoleSerializer) {
+		s.indentContext = true
+	}
+}
+
 func (c *consoleSerializer) Serialize(m Message) string {
 	context := ""
 	if m.Context != nil {
-		b, err := json.Marshal(m.Context)
+		var (
+			b   []byte
+			err error
+		)
+		if c.indentContext {
+			b, err = json.MarshalIndent(m.Context, "", "  ")
+		} else {
+			b, err = json.Marshal(m.Context)
+		}
 		str := string(b)
 		if err == nil && len(str) > 0 && str != "{}" {
 			context = str

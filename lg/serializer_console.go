@@ -65,13 +65,13 @@ func (c *consoleSerializer) Serialize(m Message) string {
 			levelSpaces += " "
 		}
 	}
-	if c.disableColors {
-		caller = c.getCaller(m)
-		level = m.Level.Formatter() + levelSpaces
-	} else {
-		caller = ColorizeString(c.getCaller(m), ClrFgCyan)
-		level = ColorizeString(m.Level.Formatter(), m.Level.Color()) + levelSpaces
+	caller = c.getCaller(m)
+	level = m.Level.Formatter()
+	if !c.disableColors {
+		caller = ColorizeString(caller, ClrFgCyan)
+		level = ColorizeString(m.Level.Formatter(), m.Level.Color())
 	}
+	level += levelSpaces
 
 	return c.getTime(m) + level + "  " + caller + m.Text + " " + context
 }
@@ -120,10 +120,15 @@ func (c *consoleSerializer) getCaller(m Message) string {
 		return "", false
 	})
 
-	if ok {
-		return res
+	if !ok {
+		res = m.Caller.Formatter()
 	}
-	return m.Caller.Formatter() + "  "
+
+	if m.Job != "" {
+		res = m.Job + "*"
+	}
+
+	return res + "  "
 }
 
 func (c *consoleSerializer) getTimeOffset(t time.Time) int {

@@ -206,11 +206,14 @@ func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message
 
 	args := make([]any, 0, len(m))
 	for _, item := range m {
-		if _, ok := item.(Sync); ok {
+		switch content := item.(type) {
+		case Sync:
 			if msg.done == nil {
 				msg.done = make(chan struct{})
 			}
-		} else {
+		case Job:
+			msg.Job = content.Name
+		default:
 			args = append(args, item)
 		}
 	}
